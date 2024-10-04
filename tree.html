@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Realistic Fractal Tree</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #87CEEB; /* Sky Blue Background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #87CEEB; /* Ensure canvas background matches body */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="treeCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('treeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set initial parameters
+        const startX = canvas.width / 2;
+        const startY = canvas.height;
+        const initialLength = 120; // Length of the initial branch
+        const initialAngle = -90; // Angle in degrees (upwards)
+        const branchAngle = 25; // Base angle for branches
+        const branchLengthReduction = 0.7; // Reduction factor for branch length
+        const minBranchLength = 2; // Minimum branch length to stop recursion
+        const maxDepth = 30; // Maximum depth of recursion
+
+        /**
+         * Converts degrees to radians.
+         * @param {number} degrees 
+         * @returns {number} radians
+         */
+        function degreesToRadians(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+        /**
+         * Draws a line from (x, y) to (newX, newY) with a specified color and line width.
+         * @param {number} x 
+         * @param {number} y 
+         * @param {number} newX 
+         * @param {number} newY 
+         * @param {string} color 
+         * @param {number} lineWidth 
+         */
+        function drawLine(x, y, newX, newY, color, lineWidth) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(newX, newY);
+            ctx.stroke();
+        }
+
+        /**
+         * Recursively draws a fractal tree.
+         * @param {number} x 
+         * @param {number} y 
+         * @param {number} length 
+         * @param {number} angle 
+         * @param {number} depth 
+         */
+        function drawFractalTree(x, y, length, angle, depth) {
+            if (depth === 0 || length < minBranchLength) {
+                // Optionally, add leaves at the end of branches
+                drawLeaf(x, y, depth);
+                return;
+            }
+
+            // Calculate the end point of the current branch
+            const rad = degreesToRadians(angle);
+            const newX = x + length * Math.cos(rad);
+            const newY = y + length * Math.sin(rad);
+
+            // Determine branch color based on depth with slight variation
+            const colorVariation = Math.floor(Math.random() * 10); // 0 to 9
+            const branchColor = `rgb(${101 + colorVariation}, ${67 + colorVariation}, ${33 + colorVariation})`; // Dark brown with variation
+
+            // Determine branch thickness based on depth with randomness
+            const maxThickness = 12;
+            const minThickness = .1;
+            // Line width decreases exponentially with depth and adds randomness
+            const lineWidth = Math.max(
+                minThickness,
+                (Math.pow(branchLengthReduction, maxDepth - depth) * maxThickness) * (0.8 + Math.random() * 0.4)
+            );
+
+            // Draw the current branch
+            drawLine(x, y, newX, newY, branchColor, lineWidth);
+
+            // Randomness in branching angles
+            const angleVariation = Math.random() * 10 - 5; // -5 to +5 degrees
+            const newBranchAngle1 = angle - branchAngle + angleVariation;
+            const newBranchAngle2 = angle + branchAngle + angleVariation;
+
+            // Randomness in branch lengths
+            const newLength1 = length * branchLengthReduction * (Math.random() * 0.2 + 0.9); // 0.9 to 1.1
+            const newLength2 = length * branchLengthReduction * (Math.random() * 0.2 + 0.9);
+
+            // Recursively draw the two new branches
+            drawFractalTree(newX, newY, newLength1, newBranchAngle1, depth - 1);
+            drawFractalTree(newX, newY, newLength2, newBranchAngle2, depth - 1);
+        }
+
+        /**
+         * Draws a leaf at the given position with variable size and color.
+         * @param {number} x 
+         * @param {number} y 
+         * @param {number} depth 
+         */
+        function drawLeaf(x, y, depth) {
+            const leafRadius = 2 + Math.random() * 3; // Randomize leaf size between 2 and 5
+            // More variation in green shades
+            const greenShade = 100 + Math.floor(Math.random() * 50); // 100 to 149
+            ctx.fillStyle = `rgb(34, ${greenShade}, 34)`; // Shades of green
+            ctx.beginPath();
+            ctx.arc(x, y, leafRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * Initializes and draws the fractal tree.
+         */
+        function init() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+            // Draw the ground
+            ctx.fillStyle = '#654321'; // Dark Brown for ground
+            ctx.fillRect(0, startY - 10, canvas.width, 10);
+
+            // Draw the fractal tree
+            drawFractalTree(startX, startY - 10, initialLength, initialAngle, maxDepth);
+        }
+
+        // Initial drawing
+        init();
+
+        // Optional: Redraw the tree on window resize to maintain aspect ratio
+        window.addEventListener('resize', () => {
+            // Adjust canvas size if needed
+            // For simplicity, keeping the canvas size fixed
+            init();
+        });
+    </script>
+</body>
+</html>

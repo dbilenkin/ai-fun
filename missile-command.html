@@ -1,0 +1,271 @@
+<!-- recreate the 80s video game missile command using HTML, CSS, JavaScript using canvas. Make it sophisticated and close to the original as possible in one go. Put everything in a single HTML file. Don't describe anything. Don't need comments either. Just output the single HTML file. -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Missile Command</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: black;
+    }
+
+    #gameCanvas {
+      display: block;
+      margin: 0 auto;
+      background-color: black;
+    }
+  </style>
+</head>
+
+<body> <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <script> var canvas = document.getElementById('gameCanvas'); var ctx = canvas.getContext('2d');
+
+    var cities = [];
+    var bases = [];
+    var playerMissiles = [];
+    var enemyMissiles = [];
+    var explosions = [];
+    var score = 0;
+    var level = 1;
+    var gameOver = false;
+
+    var basePositions = [{ x: 100, y: 550 }, { x: 400, y: 550 }, { x: 700, y: 550 }];
+
+    var cityPositions = [{ x: 200, y: 550 }, { x: 250, y: 550 }, { x: 300, y: 550 }, { x: 500, y: 550 }, { x: 550, y: 550 }, { x: 600, y: 550 }];
+
+    function init() {
+      for (var i = 0; i < 6; i++) {
+        cities.push({
+          x: cityPositions[i].x,
+          y: cityPositions[i].y,
+          destroyed: false
+        });
+      }
+      for (var i = 0; i < 3; i++) {
+        bases.push({
+          x: basePositions[i].x,
+          y: basePositions[i].y,
+          ammo: 10,
+          destroyed: false
+        });
+      }
+      canvas.addEventListener('click', shootMissile);
+      spawnEnemyMissiles();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      if (!gameOver) {
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    function update() {
+      for (var i = playerMissiles.length - 1; i >= 0; i--) {
+        var missile = playerMissiles[i];
+        missile.y -= missile.speed;
+        if (missile.y <= missile.targetY) {
+          explosions.push({
+            x: missile.x,
+            y: missile.y,
+            radius: 0,
+            maxRadius: 30
+          });
+          playerMissiles.splice(i, 1);
+        }
+      }
+      for (var i = enemyMissiles.length - 1; i >= 0; i--) {
+        var missile = enemyMissiles[i];
+        missile.x += missile.dx;
+        missile.y += missile.dy;
+        if (missile.y >= missile.targetY) {
+          explosions.push({
+            x: missile.x,
+            y: missile.y,
+            radius: 0,
+            maxRadius: 20
+          });
+          if (missile.target.type === 'city') {
+            missile.target.destroyed = true;
+          } else if (missile.target.type === 'base') {
+            missile.target.destroyed = true;
+            missile.target.ammo = 0;
+          }
+          enemyMissiles.splice(i, 1);
+        }
+      }
+      for (var i = explosions.length - 1; i >= 0; i--) {
+        var explosion = explosions[i];
+        explosion.radius += 1;
+        if (explosion.radius >= explosion.maxRadius) {
+          explosions.splice(i, 1);
+        } else {
+          for (var j = enemyMissiles.length - 1; j >= 0; j--) {
+            var missile = enemyMissiles[j];
+            var dx = missile.x - explosion.x;
+            var dy = missile.y - explosion.y;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < explosion.radius) {
+              explosions.push({
+                x: missile.x,
+                y: missile.y,
+                radius: 0,
+                maxRadius: 20
+              });
+              enemyMissiles.splice(j, 1);
+              score += 25;
+            }
+          }
+        }
+      }
+      if (enemyMissiles.length === 0 && !gameOver) {
+        var allCitiesDestroyed = true;
+        for (var i = 0; i < cities.length; i++) {
+          if (!cities[i].destroyed) {
+            allCitiesDestroyed = false;
+            break;
+          }
+        }
+        if (allCitiesDestroyed) {
+          gameOver = true;
+        } else {
+          level++;
+          replenishAmmo();
+          spawnEnemyMissiles();
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (var i = 0; i < bases.length; i++) {
+        var base = bases[i];
+        if (!base.destroyed) {
+          ctx.fillStyle = 'gray';
+          ctx.fillRect(base.x - 15, base.y - 10, 30, 20);
+        }
+      }
+      for (var i = 0; i < cities.length; i++) {
+        var city = cities[i];
+        if (!city.destroyed) {
+          ctx.fillStyle = 'green';
+          ctx.fillRect(city.x - 15, city.y - 10, 30, 20);
+        }
+      }
+      ctx.strokeStyle = 'white';
+      for (var i = 0; i < playerMissiles.length; i++) {
+        var missile = playerMissiles[i];
+        ctx.beginPath();
+        ctx.moveTo(missile.startX, missile.startY);
+        ctx.lineTo(missile.x, missile.y);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'red';
+      for (var i = 0; i < enemyMissiles.length; i++) {
+        var missile = enemyMissiles[i];
+        ctx.beginPath();
+        ctx.moveTo(missile.startX, missile.startY);
+        ctx.lineTo(missile.x, missile.y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'yellow';
+      for (var i = 0; i < explosions.length; i++) {
+        var explosion = explosions[i];
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, explosion.radius, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      ctx.fillStyle = 'white';
+      ctx.font = '20px Arial';
+      ctx.fillText('Score: ' + score, 10, 30);
+      ctx.fillText('Level: ' + level, 700, 30);
+      ctx.fillText('Ammo:', 10, 570);
+      for (var i = 0; i < bases.length; i++) {
+        var base = bases[i];
+        ctx.fillText(base.ammo, base.x - 5, base.y + 30);
+      }
+      if (gameOver) {
+        ctx.fillStyle = 'red';
+        ctx.font = '50px Arial';
+        ctx.fillText('GAME OVER', 250, 300);
+      }
+    }
+
+    function shootMissile(event) {
+      if (gameOver) return;
+      var mouseX = event.clientX - canvas.getBoundingClientRect().left;
+      var mouseY = event.clientY - canvas.getBoundingClientRect().top;
+      var closestBase = null;
+      var minDistance = Infinity;
+      for (var i = 0; i < bases.length; i++) {
+        var base = bases[i];
+        if (base.destroyed || base.ammo <= 0) continue;
+        var dx = mouseX - base.x;
+        var dy = mouseY - base.y;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestBase = base;
+        }
+      }
+      if (closestBase) {
+        closestBase.ammo--;
+        playerMissiles.push({
+          x: closestBase.x,
+          y: closestBase.y,
+          startX: closestBase.x,
+          startY: closestBase.y,
+          targetX: mouseX,
+          targetY: mouseY,
+          speed: 5
+        });
+      }
+    }
+
+    function spawnEnemyMissiles() {
+      var numMissiles = level * 10;
+      for (var i = 0; i < numMissiles; i++) {
+        var startX = Math.random() * canvas.width;
+        var startY = 0;
+        var targets = cities.concat(bases).filter(function (t) { return !t.destroyed; });
+        if (targets.length === 0) {
+          gameOver = true;
+          return;
+        }
+        var target = targets[Math.floor(Math.random() * targets.length)];
+        var dx = target.x - startX;
+        var dy = target.y - startY;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        var speed = 1 + level * 0.1;
+        enemyMissiles.push({
+          x: startX,
+          y: startY,
+          startX: startX,
+          startY: startY,
+          dx: dx / distance * speed,
+          dy: dy / distance * speed,
+          targetX: target.x,
+          targetY: target.y,
+          target: target
+        });
+      }
+    }
+
+    function replenishAmmo() {
+      for (var i = 0; i < bases.length; i++) {
+        var base = bases[i];
+        if (!base.destroyed) {
+          base.ammo = 10;
+        }
+      }
+    }
+
+    init();
+  </script>
+</body>
+
+</html>

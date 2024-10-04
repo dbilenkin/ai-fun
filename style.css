@@ -1,0 +1,76 @@
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: 'VT323', monospace;
+  margin: 0;
+  padding: 0;
+}
+
+header, footer {
+  text-align: center;
+  padding: 10px;
+}
+
+h1 {
+  font-size: 4em;
+  color: #00ffff;
+}
+
+header p {
+  font-size: 1.5em;
+  color: #a0a0a0;
+}
+
+.game-list {
+  list-style: none;
+  padding: 0;
+  margin: 50px auto;
+  max-width: 800px;
+}
+
+.game-list li {
+  background-color: #1e1e1e;
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 5px;
+}
+
+.game-list a {
+  color: #00ffff;
+  text-decoration: none;
+  font-size: 1.8em;
+  transition: color 0.3s;
+}
+
+.game-list a:hover {
+  color: #e0e0e0;
+}
+
+.game-list p {
+  color: #a0a0a0;
+  font-size: 1.1em;
+  margin: 10px 0 0;
+}
+
+.game-list p strong {
+  color: #00ffff;
+}
+
+@media (max-width: 600px) {
+  .game-list li {
+    margin: 15px;
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 2.5em;
+  }
+
+  .game-list a {
+    font-size: 1.5em;
+  }
+
+  .game-list p {
+    font-size: 1em;
+  }
+}

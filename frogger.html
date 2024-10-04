@@ -1,0 +1,357 @@
+<!-- ok now do the same thing for frogger -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Frogger</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: black;
+    }
+
+    #gameCanvas {
+      display: block;
+      margin: 0 auto;
+      background-color: black;
+    }
+  </style>
+</head>
+
+<body> <canvas id="gameCanvas" width="560" height="640"></canvas>
+  <script> var canvas = document.getElementById('gameCanvas'); var ctx = canvas.getContext('2d');
+    var gridSize = 40;
+    var gameWidth = canvas.width;
+    var gameHeight = canvas.height;
+
+    var frog = {
+      x: gridSize * 7,
+      y: gridSize * 15,
+      width: gridSize,
+      height: gridSize,
+      lives: 3,
+      isAlive: true,
+      onLog: false,
+      onTurtle: false
+    };
+
+    var homes = [{ x: gridSize * 1, y: gridSize * 0.5, occupied: false }, { x: gridSize * 4, y: gridSize * 0.5, occupied: false }, { x: gridSize * 7, y: gridSize * 0.5, occupied: false }, { x: gridSize * 10, y: gridSize * 0.5, occupied: false }, { x: gridSize * 13, y: gridSize * 0.5, occupied: false }];
+
+    var vehicles = [];
+    var logs = [];
+    var turtles = [];
+    var keysDown = {};
+
+    function init() {
+      createVehicles();
+      createLogs();
+      createTurtles();
+      document.addEventListener('keydown', function (e) {
+        keysDown[e.keyCode] = true;
+      });
+      document.addEventListener('keyup', function (e) {
+        delete keysDown[e.keyCode];
+      });
+      gameLoop();
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+      moveFrog();
+      moveVehicles();
+      moveLogs();
+      moveTurtles();
+      checkCollisions();
+    }
+
+    function moveFrog() {
+      if (frog.isAlive) {
+        if (38 in keysDown) {
+          if (frog.y - gridSize >= 0) {
+            frog.y -= gridSize;
+          }
+          delete keysDown[38];
+        }
+        if (40 in keysDown) {
+          if (frog.y + gridSize <= gameHeight - gridSize) {
+            frog.y += gridSize;
+          }
+          delete keysDown[40];
+        }
+        if (37 in keysDown) {
+          if (frog.x - gridSize >= 0) {
+            frog.x -= gridSize;
+          }
+          delete keysDown[37];
+        }
+        if (39 in keysDown) {
+          if (frog.x + gridSize <= gameWidth - gridSize) {
+            frog.x += gridSize;
+          }
+          delete keysDown[39];
+        }
+      }
+    }
+
+    function moveVehicles() {
+      vehicles.forEach(function (vehicle) {
+        vehicle.x += vehicle.speed;
+        if (vehicle.speed > 0 && vehicle.x > gameWidth + vehicle.width) {
+          vehicle.x = -vehicle.width;
+        } else if (vehicle.speed < 0 && vehicle.x < -vehicle.width) {
+          vehicle.x = gameWidth + vehicle.width;
+        }
+      });
+    }
+
+    function moveLogs() {
+      logs.forEach(function (log) {
+        log.x += log.speed;
+        if (log.speed > 0 && log.x > gameWidth + log.width) {
+          log.x = -log.width;
+        } else if (log.speed < 0 && log.x < -log.width) {
+          log.x = gameWidth + log.width;
+        }
+      });
+      if (frog.onLog) {
+        frog.x += frog.logSpeed;
+        if (frog.x < 0 || frog.x > gameWidth - frog.width) {
+          loseLife();
+        }
+      }
+    }
+
+    function moveTurtles() {
+      turtles.forEach(function (turtle) {
+        turtle.x += turtle.speed;
+        if (turtle.speed > 0 && turtle.x > gameWidth + turtle.width) {
+          turtle.x = -turtle.width;
+        } else if (turtle.speed < 0 && turtle.x < -turtle.width) {
+          turtle.x = gameWidth + turtle.width;
+        }
+      });
+      if (frog.onTurtle) {
+        frog.x += frog.turtleSpeed;
+        if (frog.x < 0 || frog.x > gameWidth - frog.width) {
+          loseLife();
+        }
+      }
+    }
+
+    function checkCollisions() {
+      for (var i = 0; i < vehicles.length; i++) {
+        var vehicle = vehicles[i];
+        if (intersects(frog, vehicle)) {
+          loseLife();
+          return;
+        }
+      }
+      if (frog.y < gridSize * 8 && frog.y >= gridSize * 3) {
+        var onLog = false;
+        var onTurtle = false;
+        for (var i = 0; i < logs.length; i++) {
+          var log = logs[i];
+          if (intersects(frog, log)) {
+            onLog = true;
+            frog.logSpeed = log.speed;
+            break;
+          }
+        }
+        for (var i = 0; i < turtles.length; i++) {
+          var turtle = turtles[i];
+          if (intersects(frog, turtle)) {
+            onTurtle = true;
+            frog.turtleSpeed = turtle.speed;
+            break;
+          }
+        }
+        if (!onLog && !onTurtle) {
+          loseLife();
+        } else {
+          frog.onLog = onLog;
+          frog.onTurtle = onTurtle;
+        }
+      } else {
+        frog.onLog = false;
+        frog.onTurtle = false;
+      }
+      if (frog.y < gridSize * 1.5) {
+        for (var i = 0; i < homes.length; i++) {
+          var home = homes[i];
+          if (!home.occupied && frog.x >= home.x - gridSize / 2 && frog.x <= home.x + gridSize / 2) {
+            home.occupied = true;
+            resetFrog();
+            break;
+          }
+        }
+      }
+    }
+
+    function loseLife() {
+      frog.lives--;
+      if (frog.lives <= 0) {
+        frog.isAlive = false;
+      }
+      resetFrog();
+    }
+
+    function resetFrog() {
+      frog.x = gridSize * 7;
+      frog.y = gridSize * 15;
+      frog.onLog = false;
+      frog.onTurtle = false;
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, gameWidth, gameHeight);
+      drawBackground();
+      drawVehicles();
+      drawLogs();
+      drawTurtles();
+      drawFrog();
+      drawHomes();
+      drawLives();
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = 'blue';
+      ctx.fillRect(0, gridSize * 3, gameWidth, gridSize * 5);
+      ctx.fillStyle = 'gray';
+      ctx.fillRect(0, gridSize * 8, gameWidth, gridSize * 5);
+      ctx.fillStyle = 'green';
+      ctx.fillRect(0, 0, gameWidth, gridSize * 3);
+      ctx.fillRect(0, gridSize * 13, gameWidth, gridSize * 3);
+    }
+
+    function drawFrog() {
+      if (frog.isAlive) {
+        ctx.fillStyle = 'lime';
+        ctx.fillRect(frog.x, frog.y, frog.width, frog.height);
+      }
+    }
+
+    function drawVehicles() {
+      vehicles.forEach(function (vehicle) {
+        ctx.fillStyle = vehicle.color;
+        ctx.fillRect(vehicle.x, vehicle.y, vehicle.width, vehicle.height);
+      });
+    }
+
+    function drawLogs() {
+      logs.forEach(function (log) {
+        ctx.fillStyle = 'brown';
+        ctx.fillRect(log.x, log.y, log.width, log.height);
+      });
+    }
+
+    function drawTurtles() {
+      turtles.forEach(function (turtle) {
+        ctx.fillStyle = 'darkgreen';
+        ctx.fillRect(turtle.x, turtle.y, turtle.width, turtle.height);
+      });
+    }
+
+    function drawHomes() {
+      homes.forEach(function (home) {
+        if (home.occupied) {
+          ctx.fillStyle = 'lime';
+          ctx.fillRect(home.x, home.y, gridSize, gridSize);
+        } else {
+          ctx.strokeStyle = 'black';
+          ctx.strokeRect(home.x, home.y, gridSize, gridSize);
+        }
+      });
+    }
+
+    function drawLives() {
+      ctx.fillStyle = 'white';
+      ctx.font = '20px Arial';
+      ctx.fillText('Lives: ' + frog.lives, 10, gameHeight - 10);
+    }
+
+    function createVehicles() {
+      vehicles.push(createVehicle(gridSize * 0, gridSize * 8, 1, 'red', gridSize * 2));
+      vehicles.push(createVehicle(gridSize * 5, gridSize * 8, 1, 'red', gridSize * 2));
+      vehicles.push(createVehicle(gridSize * 10, gridSize * 8, 1, 'red', gridSize * 2));
+      vehicles.push(createVehicle(gridSize * 13, gridSize * 9, -2, 'yellow', gridSize));
+      vehicles.push(createVehicle(gridSize * 8, gridSize * 9, -2, 'yellow', gridSize));
+      vehicles.push(createVehicle(gridSize * 3, gridSize * 9, -2, 'yellow', gridSize));
+      vehicles.push(createVehicle(gridSize * 0, gridSize * 10, 1.5, 'white', gridSize * 3));
+      vehicles.push(createVehicle(gridSize * 7, gridSize * 10, 1.5, 'white', gridSize * 3));
+      vehicles.push(createVehicle(gridSize * 13, gridSize * 11, -1, 'purple', gridSize));
+      vehicles.push(createVehicle(gridSize * 9, gridSize * 11, -1, 'purple', gridSize));
+      vehicles.push(createVehicle(gridSize * 5, gridSize * 11, -1, 'purple', gridSize));
+      vehicles.push(createVehicle(gridSize * 0, gridSize * 12, 2, 'orange', gridSize * 2));
+      vehicles.push(createVehicle(gridSize * 6, gridSize * 12, 2, 'orange', gridSize * 2));
+      vehicles.push(createVehicle(gridSize * 12, gridSize * 12, 2, 'orange', gridSize * 2));
+    }
+
+    function createVehicle(x, y, speed, color, width) {
+      return {
+        x: x,
+        y: y,
+        width: width,
+        height: gridSize,
+        speed: speed,
+        color: color
+      };
+    }
+
+    function createLogs() {
+      logs.push(createLog(gridSize * 0, gridSize * 3, -1.5, gridSize * 3));
+      logs.push(createLog(gridSize * 6, gridSize * 3, -1.5, gridSize * 3));
+      logs.push(createLog(gridSize * 12, gridSize * 3, -1.5, gridSize * 3));
+      logs.push(createLog(gridSize * 2, gridSize * 4, 1, gridSize * 2));
+      logs.push(createLog(gridSize * 8, gridSize * 4, 1, gridSize * 2));
+      logs.push(createLog(gridSize * 14, gridSize * 4, 1, gridSize * 2));
+      logs.push(createLog(gridSize * 0, gridSize * 6, -1, gridSize * 3));
+      logs.push(createLog(gridSize * 6, gridSize * 6, -1, gridSize * 3));
+      logs.push(createLog(gridSize * 12, gridSize * 6, -1, gridSize * 3));
+    }
+
+    function createLog(x, y, speed, width) {
+      return {
+        x: x,
+        y: y,
+        width: width,
+        height: gridSize,
+        speed: speed
+      };
+    }
+
+    function createTurtles() {
+      turtles.push(createTurtle(gridSize * 4, gridSize * 5, 1.5));
+      turtles.push(createTurtle(gridSize * 9, gridSize * 5, 1.5));
+      turtles.push(createTurtle(gridSize * 14, gridSize * 5, 1.5));
+      turtles.push(createTurtle(gridSize * 2, gridSize * 7, 2));
+      turtles.push(createTurtle(gridSize * 7, gridSize * 7, 2));
+      turtles.push(createTurtle(gridSize * 12, gridSize * 7, 2));
+    }
+
+    function createTurtle(x, y, speed) {
+      return {
+        x: x,
+        y: y,
+        width: gridSize,
+        height: gridSize,
+        speed: speed
+      };
+    }
+
+    init();
+  </script>
+</body>
+
+</html>

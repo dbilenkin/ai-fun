@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Space Invaders</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        var canvas = document.getElementById('gameCanvas');
+        var ctx = canvas.getContext('2d');
+
+        var player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            width: 50,
+            height: 50,
+            speed: 5,
+            bullets: []
+        };
+
+        var keys = {};
+
+        var invaders = [];
+        var invaderRows = 5;
+        var invaderCols = 11;
+        var invaderWidth = 40;
+        var invaderHeight = 30;
+        var invaderPadding = 10;
+        var invaderOffsetTop = 50;
+        var invaderOffsetLeft = 50;
+        var invaderSpeedX = 1;
+        var invaderSpeedY = 10;
+        var invaderDirection = 1;
+
+        var invaderBullets = [];
+        var invaderBulletSpeed = 3;
+
+        var score = 0;
+        var gameOver = false;
+
+        document.addEventListener('keydown', function(e) {
+            keys[e.keyCode] = true;
+        });
+
+        document.addEventListener('keyup', function(e) {
+            keys[e.keyCode] = false;
+            if (e.keyCode === 32) {
+                // Space key to shoot
+                player.bullets.push({
+                    x: player.x + player.width / 2 - 2,
+                    y: player.y,
+                    width: 4,
+                    height: 10,
+                    speed: 7
+                });
+            }
+        });
+
+        function createInvaders() {
+            for (var c = 0; c < invaderCols; c++) {
+                invaders[c] = [];
+                for (var r = 0; r < invaderRows; r++) {
+                    invaders[c][r] = {
+                        x: 0,
+                        y: 0,
+                        status: 1
+                    };
+                }
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = 'green';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        function drawInvaders() {
+            for (var c = 0; c < invaderCols; c++) {
+                for (var r = 0; r < invaderRows; r++) {
+                    if (invaders[c][r].status === 1) {
+                        var invaderX = (c * (invaderWidth + invaderPadding)) + invaderOffsetLeft;
+                        var invaderY = (r * (invaderHeight + invaderPadding)) + invaderOffsetTop;
+                        invaders[c][r].x = invaderX;
+                        invaders[c][r].y = invaderY;
+                        ctx.fillStyle = 'red';
+                        ctx.fillRect(invaderX, invaderY, invaderWidth, invaderHeight);
+                    }
+                }
+            }
+        }
+
+        function moveInvaders() {
+            var rightMost = 0;
+            var leftMost = canvas.width;
+            for (var c = 0; c < invaderCols; c++) {
+                for (var r = 0; r < invaderRows; r++) {
+                    if (invaders[c][r].status === 1) {
+                        if (invaders[c][r].x > rightMost) {
+                            rightMost = invaders[c][r].x + invaderWidth;
+                        }
+                        if (invaders[c][r].x < leftMost) {
+                            leftMost = invaders[c][r].x;
+                        }
+                    }
+                }
+            }
+
+            if (rightMost > canvas.width - invaderOffsetLeft) {
+                invaderDirection = -1;
+                for (var c = 0; c < invaderCols; c++) {
+                    for (var r = 0; r < invaderRows; r++) {
+                        invaders[c][r].y += invaderSpeedY;
+                    }
+                }
+            } else if (leftMost < invaderOffsetLeft) {
+                invaderDirection = 1;
+                for (var c = 0; c < invaderCols; c++) {
+                    for (var r = 0; r < invaderRows; r++) {
+                        invaders[c][r].y += invaderSpeedY;
+                    }
+                }
+            }
+
+            for (var c = 0; c < invaderCols; c++) {
+                for (var r = 0; r < invaderRows; r++) {
+                    invaders[c][r].x += invaderSpeedX * invaderDirection;
+                }
+            }
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = 'white';
+            for (var i = 0; i < player.bullets.length; i++) {
+                var b = player.bullets[i];
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+            }
+            for (var i = 0; i < invaderBullets.length; i++) {
+                var b = invaderBullets[i];
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+            }
+        }
+
+        function moveBullets() {
+            for (var i = 0; i < player.bullets.length; i++) {
+                var b = player.bullets[i];
+                b.y -= b.speed;
+                if (b.y < 0) {
+                    player.bullets.splice(i, 1);
+                    i--;
+                }
+            }
+            for (var i = 0; i < invaderBullets.length; i++) {
+                var b = invaderBullets[i];
+                b.y += b.speed;
+                if (b.y > canvas.height) {
+                    invaderBullets.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        function collisionDetection() {
+            // Player bullets vs invaders
+            for (var i = 0; i < player.bullets.length; i++) {
+                var b = player.bullets[i];
+                for (var c = 0; c < invaderCols; c++) {
+                    for (var r = 0; r < invaderRows; r++) {
+                        var inv = invaders[c][r];
+                        if (inv.status === 1) {
+                            if (b.x > inv.x && b.x < inv.x + invaderWidth && b.y > inv.y && b.y < inv.y + invaderHeight) {
+                                inv.status = 0;
+                                player.bullets.splice(i, 1);
+                                i--;
+                                score += 10;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Invader bullets vs player
+            for (var i = 0; i < invaderBullets.length; i++) {
+                var b = invaderBullets[i];
+                if (b.x > player.x && b.x < player.x + player.width && b.y > player.y && b.y < player.y + player.height) {
+                    gameOver = true;
+                }
+            }
+
+            // Invaders reach player
+            for (var c = 0; c < invaderCols; c++) {
+                for (var r = 0; r < invaderRows; r++) {
+                    var inv = invaders[c][r];
+                    if (inv.status === 1 && inv.y + invaderHeight > player.y) {
+                        gameOver = true;
+                    }
+                }
+            }
+        }
+
+        function invaderShoot() {
+            var shootingInvaders = [];
+            for (var c = 0; c < invaderCols; c++) {
+                for (var r = invaderRows - 1; r >= 0; r--) {
+                    if (invaders[c][r].status === 1) {
+                        shootingInvaders.push(invaders[c][r]);
+                        break;
+                    }
+                }
+            }
+            var shooter = shootingInvaders[Math.floor(Math.random() * shootingInvaders.length)];
+            if (shooter) {
+                invaderBullets.push({
+                    x: shooter.x + invaderWidth / 2,
+                    y: shooter.y + invaderHeight,
+                    width: 4,
+                    height: 10,
+                    speed: invaderBulletSpeed
+                });
+            }
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText('Score: ' + score, 10, 20);
+        }
+
+        function drawGameOver() {
+            ctx.fillStyle = 'white';
+            ctx.font = '60px Arial';
+            ctx.fillText('GAME OVER', canvas.width / 2 - 180, canvas.height / 2);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!gameOver) {
+                if (keys[37] && player.x > 0) {
+                    player.x -= player.speed;
+                }
+                if (keys[39] && player.x < canvas.width - player.width) {
+                    player.x += player.speed;
+                }
+
+                drawPlayer();
+                drawInvaders();
+                moveInvaders();
+                if (Math.random() < 0.02) {
+                    invaderShoot();
+                }
+                drawBullets();
+                moveBullets();
+                collisionDetection();
+                drawScore();
+
+                requestAnimationFrame(gameLoop);
+            } else {
+                drawGameOver();
+            }
+        }
+
+        createInvaders();
+        gameLoop();
+    </script>
+</body>
+</html>
